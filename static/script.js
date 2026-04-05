@@ -25,6 +25,18 @@ function isValidEmail(email) {
   return allowedDomains.includes(domain);
 }
 
+// ================= DEVICE DETECTION (FIXED) =================
+function getDevice() {
+  if (
+    navigator.userAgentData?.mobile ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    window.innerWidth <= 768
+  ) {
+    return "Mobile";
+  }
+  return "Laptop";
+}
+
 // ================= SIGNUP =================
 window.signup = async () => {
   const username = document.getElementById("username").value.trim();
@@ -57,14 +69,14 @@ window.signup = async () => {
   }
 };
 
-// ================= STORE DATA (NEW) =================
+// ================= STORE DATA =================
 async function storeData(failedAttempts) {
   const uid = localStorage.getItem("uid");
   const email = localStorage.getItem("email");
 
   if (!uid || !email) return;
 
-  let device = /Android|iPhone|iPad/i.test(navigator.userAgent) ? "Mobile" : "Laptop";
+  const device = getDevice();
 
   const now = new Date();
   const date = now.toISOString().split("T")[0];
@@ -128,14 +140,14 @@ window.login = async () => {
     localStorage.setItem("uid", user.uid);
     localStorage.setItem("email", user.email);
 
-    // 🔥 STORE DATA ALWAYS (IMPORTANT FIX)
+    // 🔥 STORE DATA ALWAYS
     await storeData(failedAttempts);
 
     // RESET FAILED ATTEMPTS
     localStorage.setItem("failedAttempts", 0);
 
     // ================= ML DATA =================
-    let device = /Android|iPhone|iPad/i.test(navigator.userAgent) ? "Mobile" : "Laptop";
+    const device = getDevice();
 
     const now = new Date();
     let hours = now.getHours();
