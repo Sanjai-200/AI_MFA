@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,7 +24,7 @@ document.getElementById("welcome").innerText = "Welcome " + email;
 
 function logout() {
   localStorage.clear();
-  window.location = "index.html";
+  window.location = "/";  // ✅ FIXED
 }
 </script>
 
