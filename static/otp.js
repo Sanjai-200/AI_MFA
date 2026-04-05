@@ -26,7 +26,7 @@ async function verifyOTP() {
     await storeData();
 
     setTimeout(() => {
-      window.location = "home.html";
+      window.location = "/home";  // ✅ FIXED
     }, 1000);
 
   } else {
@@ -46,7 +46,7 @@ function resendOTP() {
 }
 
 
-// ================= LOCATION (YOUR WORKING VERSION) =================
+// ================= LOCATION =================
 async function getLocation() {
   let location = "Unknown";
 
@@ -84,7 +84,7 @@ async function getLocation() {
 
 // ================= STORE DATA =================
 async function storeData() {
-  const { db } = await import("./firebase.js");
+  const { db } = await import("/static/firebase.js"); // ✅ FIXED PATH
   const { doc, setDoc, getDoc } = await import(
     "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
   );
@@ -130,7 +130,7 @@ async function storeData() {
     }
   }
 
-  // FINAL SAVE
+  // SAVE
   await setDoc(ref, {
     email,
     location,
@@ -141,4 +141,3 @@ async function storeData() {
     failedAttempts
   });
 }
-
