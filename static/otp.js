@@ -1,4 +1,4 @@
-// ================= OTP VERIFY =================
+// ================= VERIFY OTP =================
 async function verifyOTP() {
   const entered = document.getElementById("otpInput").value.trim();
 
@@ -6,27 +6,21 @@ async function verifyOTP() {
   const time = localStorage.getItem("otpTime");
 
   if (!otp || !time) {
-    document.getElementById("msg").innerText = "OTP not found. Please login again.";
-    return;
-  }
-
-  const otpTime = parseInt(time);
-  const currentTime = Date.now();
-
-  if (currentTime - otpTime > 3600000) {
-    document.getElementById("msg").innerText = "OTP expired.";
-    localStorage.removeItem("otp");
-    localStorage.removeItem("otpTime");
+    document.getElementById("msg").innerText = "OTP not found.";
     return;
   }
 
   if (entered === otp) {
     document.getElementById("msg").innerText = "OTP Verified ✅";
 
-    await storeData();
+    const failedAttempts = parseInt(localStorage.getItem("finalFailedAttempts")) || 0;
+
+    await storeData(failedAttempts); // ✅ ONLY HERE
+
+    localStorage.setItem("failedAttempts", 0);
 
     setTimeout(() => {
-      window.location = "/home";  // ✅ FIXED
+      window.location = "/home";
     }, 1000);
 
   } else {
@@ -34,57 +28,25 @@ async function verifyOTP() {
   }
 }
 
-
-// ================= RESEND OTP =================
-function resendOTP() {
-  const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-  localStorage.setItem("otp", newOtp);
-  localStorage.setItem("otpTime", Date.now().toString());
-
-  alert("New OTP: " + newOtp);
-}
-
-
 // ================= LOCATION =================
 async function getLocation() {
   let location = "Unknown";
 
   try {
-    let res = await fetch("https://ipwho.is/?timestamp=" + Date.now(), {
+    const res = await fetch("https://ipwho.is/?t=" + Date.now(), {
       cache: "no-store"
     });
+    const data = await res.json();
 
-    let data = await res.json();
-
-    if (data && data.success) {
-      return data.country;
-    }
-
-    res = await fetch("https://api.ipify.org?format=json");
-    const ipData = await res.json();
-
-    res = await fetch(`https://ipapi.co/${ipData.ip}/json/?timestamp=${Date.now()}`, {
-      cache: "no-store"
-    });
-
-    data = await res.json();
-
-    if (data && data.country_name) {
-      return data.country_name;
-    }
-
-  } catch (e) {
-    console.log("Location fetch error:", e);
-  }
+    if (data.success) location = data.country;
+  } catch {}
 
   return location;
 }
 
-
 // ================= STORE DATA =================
-async function storeData() {
-  const { db } = await import("/static/firebase.js"); // ✅ FIXED PATH
+async function storeData(failedAttempts) {
+  const { db } = await import("/static/firebase.js");
   const { doc, setDoc, getDoc } = await import(
     "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
   );
@@ -92,45 +54,24 @@ async function storeData() {
   const uid = localStorage.getItem("uid");
   const email = localStorage.getItem("email");
 
-  const failedAttempts = parseInt(localStorage.getItem("finalFailedAttempts")) || 0;
-
-  if (!uid || !email) return;
-
-  // DEVICE
-  let device = "Laptop";
-  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    device = "Mobile";
-  }
-
-  // DATE & TIME
   const now = new Date();
   const date = now.toISOString().split("T")[0];
+  const time = now.toLocaleTimeString();
 
-  let hours = now.getHours();
-  let minutes = now.getMinutes();
-  const ampm = hours >= 12 ? "PM" : "AM";
+  const device = /Android|iPhone/i.test(navigator.userAgent)
+    ? "Mobile"
+    : "Laptop";
 
-  hours = hours % 12 || 12;
-  minutes = minutes < 10 ? "0" + minutes : minutes;
-
-  const time = `${hours}:${minutes} ${ampm}`;
-
-  // LOCATION
   const location = await getLocation();
 
   const ref = doc(db, "activity", uid);
   const snap = await getDoc(ref);
 
   let loginCount = 1;
-
   if (snap.exists()) {
-    const data = snap.data();
-    if (data.date === date) {
-      loginCount = (data.loginCount || 0) + 1;
-    }
+    loginCount = (snap.data().loginCount || 0) + 1;
   }
 
-  // SAVE
   await setDoc(ref, {
     email,
     location,
