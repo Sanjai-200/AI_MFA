@@ -107,11 +107,11 @@ async function loadUserData() {
 loadUsername();
 loadUserData();
 
-// LOGOUT
-function logout() {
+// 🔥 FIXED LOGOUT (GLOBAL)
+window.logout = function () {
   localStorage.clear();
   window.location = "/";
-}
+};
 </script>
 
 </body>
