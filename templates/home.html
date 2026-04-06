@@ -65,19 +65,29 @@ import { db } from "/static/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const uid = localStorage.getItem("uid");
+const email = localStorage.getItem("email");
 
-// 🔥 LOAD USERNAME
+// 🔥 LOAD USERNAME (FIXED)
 async function loadUsername() {
   if (!uid) return;
 
-  const ref = doc(db, "users", uid);
-  const snap = await getDoc(ref);
+  try {
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
 
-  if (snap.exists()) {
-    const data = snap.data();
-    document.getElementById("welcome").innerText = "Welcome " + data.username;
-  } else {
-    document.getElementById("welcome").innerText = "Welcome User";
+    if (snap.exists() && snap.data().username) {
+      document.getElementById("welcome").innerText =
+        "Welcome " + snap.data().username;
+    } else {
+      // 🔥 fallback to email
+      document.getElementById("welcome").innerText =
+        "Welcome " + (email || "User");
+    }
+
+  } catch (e) {
+    console.log(e);
+    document.getElementById("welcome").innerText =
+      "Welcome " + (email || "User");
   }
 }
 
@@ -85,21 +95,27 @@ async function loadUsername() {
 async function loadUserData() {
   if (!uid) return;
 
-  const ref = doc(db, "activity", uid);
-  const snap = await getDoc(ref);
+  try {
+    const ref = doc(db, "activity", uid);
+    const snap = await getDoc(ref);
 
-  if (snap.exists()) {
-    const data = snap.data();
+    if (snap.exists()) {
+      const data = snap.data();
 
-    document.getElementById("userLogs").innerHTML = `
-      <p><b>Device:</b> ${data.device}</p>
-      <p><b>Location:</b> ${data.location}</p>
-      <p><b>Time:</b> ${data.time}</p>
-      <p><b>Login Count:</b> ${data.loginCount}</p>
-      <p><b>Failed Attempts:</b> ${data.failedAttempts}</p>
-    `;
-  } else {
-    document.getElementById("userLogs").innerText = "No data found";
+      document.getElementById("userLogs").innerHTML = `
+        <p><b>Device:</b> ${data.device || "-"}</p>
+        <p><b>Location:</b> ${data.location || "-"}</p>
+        <p><b>Time:</b> ${data.time || "-"}</p>
+        <p><b>Login Count:</b> ${data.loginCount || 0}</p>
+        <p><b>Failed Attempts:</b> ${data.failedAttempts || 0}</p>
+      `;
+    } else {
+      document.getElementById("userLogs").innerText = "No data found";
+    }
+
+  } catch (e) {
+    console.log(e);
+    document.getElementById("userLogs").innerText = "Error loading data";
   }
 }
 
@@ -107,7 +123,7 @@ async function loadUserData() {
 loadUsername();
 loadUserData();
 
-// 🔥 FIXED LOGOUT (GLOBAL)
+// LOGOUT
 window.logout = function () {
   localStorage.clear();
   window.location = "/";
