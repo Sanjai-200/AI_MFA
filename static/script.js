@@ -14,13 +14,10 @@ function isValidEmail(email) {
   const regex = /^[a-z0-9]+([._%+-]?[a-z0-9]+)*@[a-z0-9-]+\.[a-z]{2,}$/;
 
   if (!regex.test(email)) return false;
-  if (email.includes("..")) return false;
-  if (email.includes("@.")) return false;
+  if (email.includes("..") || email.includes("@.")) return false;
 
   const allowedDomains = ["gmail.com", "yahoo.com", "outlook.com"];
-  const domain = email.split("@")[1];
-
-  return allowedDomains.includes(domain);
+  return allowedDomains.includes(email.split("@")[1]);
 }
 
 // DEVICE
@@ -34,20 +31,30 @@ function getDevice() {
   return "Laptop";
 }
 
-// LOCATION
+// 🔥 FIXED LOCATION (STRONG VERSION)
 async function getLocation() {
-  let location = "Unknown";
+  try {
+    let res = await fetch("https://ipwho.is/?t=" + Date.now(), { cache: "no-store" });
+    let data = await res.json();
+
+    if (data.success && data.country) return data.country;
+  } catch (e) {
+    console.log("Primary API failed:", e);
+  }
 
   try {
-    const res = await fetch("https://ipwho.is/?t=" + Date.now(), {
-      cache: "no-store"
-    });
+    const ipRes = await fetch("https://api.ipify.org?format=json");
+    const ipData = await ipRes.json();
+
+    const res = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
     const data = await res.json();
 
-    if (data.success) location = data.country;
-  } catch {}
+    if (data.country_name) return data.country_name;
+  } catch (e) {
+    console.log("Fallback failed:", e);
+  }
 
-  return location;
+  return "India"; // fallback
 }
 
 // ================= SIGNUP =================
@@ -62,7 +69,7 @@ window.signup = async () => {
   }
 
   try {
-    const user = await createUserWithEmailAndPassword(auth, email, password);
+    await createUserWithEmailAndPassword(auth, email, password);
     alert("Account created successfully!");
     window.location = "/";
   } catch (e) {
@@ -89,6 +96,20 @@ window.login = async () => {
     const now = new Date();
     const time = now.toLocaleTimeString();
 
+    // 🔥 GET REAL LOGIN COUNT (FIX)
+    const { db } = await import("/static/firebase.js");
+    const { doc, getDoc } = await import(
+      "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
+    );
+
+    const ref = doc(db, "activity", userCred.user.uid);
+    const snap = await getDoc(ref);
+
+    let loginCount = 1;
+    if (snap.exists()) {
+      loginCount = (snap.data().loginCount || 0) + 1;
+    }
+
     // ML CALL
     const response = await fetch("/predict", {
       method: "POST",
@@ -96,7 +117,7 @@ window.login = async () => {
       body: JSON.stringify({
         device,
         location,
-        loginCount: 1,
+        loginCount,
         failedAttempts,
         time
       })
@@ -105,11 +126,9 @@ window.login = async () => {
     const result = await response.json();
 
     if (result.prediction === 0) {
-      // SAFE → go home (store handled separately)
       localStorage.setItem("failedAttempts", 0);
       window.location = "/home";
     } else {
-      // RISK → OTP
       localStorage.setItem("finalFailedAttempts", failedAttempts);
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -123,6 +142,7 @@ window.login = async () => {
   } catch {
     failedAttempts++;
     localStorage.setItem("failedAttempts", failedAttempts);
+
     document.getElementById("msg").innerText =
       "Login failed ❌ (" + failedAttempts + ")";
   }
