@@ -1,5 +1,5 @@
 // ================= VERIFY OTP =================
-window.verifyOTP = async function () {
+async function verifyOTP() {
   const entered = document.getElementById("otpInput").value.trim();
 
   const otp = localStorage.getItem("otp");
@@ -13,7 +13,8 @@ window.verifyOTP = async function () {
   if (entered === otp) {
     document.getElementById("msg").innerText = "OTP Verified ✅";
 
-    const failedAttempts = parseInt(localStorage.getItem("finalFailedAttempts")) || 0;
+    const failedAttempts =
+      parseInt(localStorage.getItem("finalFailedAttempts")) || 0;
 
     await storeData(failedAttempts);
 
@@ -26,18 +27,18 @@ window.verifyOTP = async function () {
   } else {
     document.getElementById("msg").innerText = "Wrong OTP ❌";
   }
-};
+}
 
 
-// ================= RESEND OTP (MISSING FUNCTION ADDED) =================
-window.resendOTP = function () {
+// ================= RESEND OTP =================
+function resendOTP() {
   const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
   localStorage.setItem("otp", newOtp);
   localStorage.setItem("otpTime", Date.now());
 
   document.getElementById("msg").innerText = "New OTP sent!";
-};
+}
 
 
 // ================= LOCATION =================
@@ -45,7 +46,6 @@ async function getLocation() {
   try {
     let res = await fetch("https://ipwho.is/?t=" + Date.now(), { cache: "no-store" });
     let data = await res.json();
-
     if (data.success && data.country) return data.country;
   } catch {}
 
@@ -101,3 +101,8 @@ async function storeData(failedAttempts) {
     failedAttempts
   });
 }
+
+
+// ================= EVENT LISTENERS =================
+document.getElementById("verifyBtn").addEventListener("click", verifyOTP);
+document.getElementById("resendBtn").addEventListener("click", resendOTP);
