@@ -48,9 +48,8 @@ button {
 
 <div class="box">
 
-<h2 id="welcome"></h2>
+<h2 id="welcome">Loading...</h2>
 
-<!-- 🔥 USER LOGS -->
 <h3>User Logs</h3>
 
 <div class="logs" id="userLogs">
@@ -65,13 +64,24 @@ button {
 import { db } from "/static/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
-const email = localStorage.getItem("email");
 const uid = localStorage.getItem("uid");
 
-// Welcome
-document.getElementById("welcome").innerText = "Welcome " + email;
+// 🔥 LOAD USERNAME
+async function loadUsername() {
+  if (!uid) return;
 
-// 🔥 LOAD USER DATA
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    const data = snap.data();
+    document.getElementById("welcome").innerText = "Welcome " + data.username;
+  } else {
+    document.getElementById("welcome").innerText = "Welcome User";
+  }
+}
+
+// 🔥 LOAD USER LOGS
 async function loadUserData() {
   if (!uid) return;
 
@@ -82,20 +92,22 @@ async function loadUserData() {
     const data = snap.data();
 
     document.getElementById("userLogs").innerHTML = `
-      <p>📱 <b>Device:</b> ${data.device}</p>
-      <p>🌍 <b>Location:</b> ${data.location}</p>
-      <p>🕒 <b>Time:</b> ${data.time}</p>
-      <p>📊 <b>Login Count:</b> ${data.loginCount}</p>
-      <p>❗ <b>Failed Attempts:</b> ${data.failedAttempts}</p>
+      <p><b>Device:</b> ${data.device}</p>
+      <p><b>Location:</b> ${data.location}</p>
+      <p><b>Time:</b> ${data.time}</p>
+      <p><b>Login Count:</b> ${data.loginCount}</p>
+      <p><b>Failed Attempts:</b> ${data.failedAttempts}</p>
     `;
   } else {
     document.getElementById("userLogs").innerText = "No data found";
   }
 }
 
+// CALL FUNCTIONS
+loadUsername();
 loadUserData();
 
-// Logout
+// LOGOUT
 function logout() {
   localStorage.clear();
   window.location = "/";
