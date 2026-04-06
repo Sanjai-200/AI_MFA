@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
-// 🔥 ADD THIS IMPORT (NEW)
+// 🔥 ADD THIS IMPORT
 import { doc, setDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 // ROUTES
@@ -74,7 +74,6 @@ window.signup = async () => {
   try {
     const user = await createUserWithEmailAndPassword(auth, email, password);
 
-    // 🔥 ADD THIS (SAVE USERNAME)
     const { db } = await import("/static/firebase.js");
     await setDoc(doc(db, "users", user.user.uid), {
       username,
@@ -108,7 +107,6 @@ window.login = async () => {
     const now = new Date();
     const time = now.toLocaleTimeString();
 
-    // 🔥 GET REAL LOGIN COUNT
     const { db } = await import("/static/firebase.js");
     const { doc, getDoc } = await import(
       "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
@@ -118,8 +116,17 @@ window.login = async () => {
     const snap = await getDoc(ref);
 
     let loginCount = 1;
+
     if (snap.exists()) {
-      loginCount = (snap.data().loginCount || 0) + 1;
+      const data = snap.data();
+      const today = new Date().toISOString().split("T")[0];
+
+      // 🔥 SAME FIX APPLIED HERE (for ML accuracy)
+      if (data.date === today) {
+        loginCount = (data.loginCount || 0) + 1;
+      } else {
+        loginCount = 1;
+      }
     }
 
     // ML CALL
@@ -188,8 +195,16 @@ async function storeData(failedAttempts) {
   const snap = await getDoc(ref);
 
   let loginCount = 1;
+
   if (snap.exists()) {
-    loginCount = (snap.data().loginCount || 0) + 1;
+    const data = snap.data();
+
+    // 🔥 MIDNIGHT RESET FIX
+    if (data.date === date) {
+      loginCount = (data.loginCount || 0) + 1;
+    } else {
+      loginCount = 1;
+    }
   }
 
   await setDoc(ref, {
