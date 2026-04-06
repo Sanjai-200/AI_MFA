@@ -65,9 +65,8 @@ import { db } from "/static/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const uid = localStorage.getItem("uid");
-const email = localStorage.getItem("email");
 
-// 🔥 LOAD USERNAME (FIXED)
+// 🔥 LOAD USERNAME (FINAL FIX)
 async function loadUsername() {
   if (!uid) return;
 
@@ -79,15 +78,14 @@ async function loadUsername() {
       document.getElementById("welcome").innerText =
         "Welcome " + snap.data().username;
     } else {
-      // 🔥 fallback to email
       document.getElementById("welcome").innerText =
-        "Welcome " + (email || "User");
+        "Welcome User";
     }
 
   } catch (e) {
     console.log(e);
     document.getElementById("welcome").innerText =
-      "Welcome " + (email || "User");
+      "Welcome User";
   }
 }
 
