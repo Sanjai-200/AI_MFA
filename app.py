@@ -5,11 +5,11 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# ================= LOAD MODEL =================
+# LOAD MODEL
 with open("model.pkl", "rb") as f:
     model = pickle.load(f)
 
-# ================= ROUTES =================
+# ROUTES
 @app.route("/")
 def login():
     return render_template("index.html")
@@ -28,6 +28,7 @@ def home():
 
 
 # ================= SAFE PARSERS =================
+
 def safe_int(value, default=0):
     try:
         return int(value)
@@ -85,6 +86,7 @@ def parse_device(device):
 
 
 # ================= ENCODE =================
+
 def encode(data):
     device = parse_device(data.get("device"))
     location = parse_location(data.get("location"))
@@ -101,6 +103,7 @@ def encode(data):
 
 
 # ================= PREDICT =================
+
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
@@ -109,7 +112,7 @@ def predict():
 
     pred = model.predict(input_data)[0]
 
-    # DEBUG
+    # DEBUG (optional)
     print("RAW INPUT:", data)
     print("PROCESSED:", input_data.to_dict())
     print("PREDICTION:", pred)
@@ -117,6 +120,7 @@ def predict():
     return jsonify({"prediction": int(pred)})
 
 
-# ================= RUN =================
+# RUN
 if __name__ == "__main__":
     app.run(debug=True)
+    
