@@ -2,58 +2,12 @@ from flask import Flask, request, jsonify, render_template
 import pickle
 import pandas as pd
 from datetime import datetime
-import smtplib
-from email.mime.text import MIMEText
-import os
-import random
 
 app = Flask(__name__)
 
 # ================= LOAD MODEL =================
 with open("model.pkl", "rb") as f:
     model = pickle.load(f)
-
-# ================= EMAIL FUNCTION =================
-def send_otp_email(to_email, otp):
-    try:
-        sender_email = os.environ.get("EMAIL")
-        sender_password = os.environ.get("EMAIL_PASS")
-
-        subject = "Your OTP Code"
-        body = f"Your OTP is: {otp}"
-
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = sender_email
-        msg["To"] = to_email
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
-
-    except Exception as e:
-        print("EMAIL ERROR:", e)
-
-
-# ================= SEND OTP ROUTE =================
-@app.route("/send-otp", methods=["POST"])
-def send_otp():
-    try:
-        data = request.json
-        email = data.get("email")
-
-        otp = str(random.randint(100000, 999999))
-
-        send_otp_email(email, otp)
-
-        return jsonify({"otp": otp})
-
-    except Exception as e:
-        print("OTP ROUTE ERROR:", e)
-
-        # fallback OTP (prevents frontend crash)
-        return jsonify({"otp": "123456"})
-
 
 # ================= ROUTES =================
 @app.route("/")
@@ -72,14 +26,8 @@ def otp():
 def home():
     return render_template("home.html")
 
-# ================= KEEP SERVER AWAKE =================
-@app.route("/ping")
-def ping():
-    return "OK"
-
 
 # ================= SAFE PARSERS =================
-
 def safe_int(value, default=0):
     try:
         return int(value)
@@ -94,11 +42,11 @@ def parse_time(time_str):
     time_str = str(time_str).strip()
 
     try:
-        # 24-hour format
+        # 24-hour format (21:24:18)
         if ":" in time_str and "AM" not in time_str and "PM" not in time_str:
             return int(time_str.split(":")[0])
 
-        # 12-hour format
+        # 12-hour format (7:24:18 PM)
         if "AM" in time_str or "PM" in time_str:
             try:
                 return datetime.strptime(time_str, "%I:%M:%S %p").hour
@@ -108,7 +56,7 @@ def parse_time(time_str):
     except:
         pass
 
-    return 12
+    return 12  # fallback
 
 
 def parse_location(location):
@@ -117,10 +65,11 @@ def parse_location(location):
 
     loc = str(location).strip().lower()
 
+    # treat safe
     if loc in ["india", "unknown", ""]:
         return 0
 
-    return 1
+    return 1  # risky
 
 
 def parse_device(device):
@@ -154,22 +103,18 @@ def encode(data):
 # ================= PREDICT =================
 @app.route("/predict", methods=["POST"])
 def predict():
-    try:
-        data = request.json
+    data = request.json
 
-        input_data = encode(data)
+    input_data = encode(data)
 
-        pred = model.predict(input_data)[0]
+    pred = model.predict(input_data)[0]
 
-        print("RAW INPUT:", data)
-        print("PROCESSED:", input_data.to_dict())
-        print("PREDICTION:", pred)
+    # DEBUG
+    print("RAW INPUT:", data)
+    print("PROCESSED:", input_data.to_dict())
+    print("PREDICTION:", pred)
 
-        return jsonify({"prediction": int(pred)})
-
-    except Exception as e:
-        print("PREDICT ERROR:", e)
-        return jsonify({"prediction": 0})  # fallback safe
+    return jsonify({"prediction": int(pred)})
 
 
 # ================= RUN =================
