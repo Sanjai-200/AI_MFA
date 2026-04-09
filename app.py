@@ -1,82 +1,57 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect
 import pickle
 import pandas as pd
 from datetime import datetime
-import smtplib
-from email.mime.text import MIMEText
+
+# ✅ IMPORT OTP FUNCTIONS
+from email_otp import generate_otp, send_otp
 
 app = Flask(__name__)
+app.secret_key = "secret123"  # ✅ Required for session
 
-# ================= CONFIG =================
-EMAIL_SENDER = "smart7mfa@gmail.com"
-EMAIL_PASSWORD = "rnokxuzddimxpgob"  # no spaces
-
-# ================= LOAD MODEL =================
+# LOAD MODEL
 with open("model.pkl", "rb") as f:
     model = pickle.load(f)
 
-
-# ================= EMAIL FUNCTION =================
-def send_email(to_email, otp):
-    if not to_email or not otp:
-        print("❌ Invalid email/otp")
-        return False
-
-    msg = MIMEText(f"Your OTP is: {otp}")
-    msg["Subject"] = "OTP Verification"
-    msg["From"] = EMAIL_SENDER
-    msg["To"] = to_email
-
-    try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        server.sendmail(EMAIL_SENDER, to_email, msg.as_string())
-        server.quit()
-
-        print(f"✅ OTP sent to {to_email}")
-        return True
-
-    except Exception as e:
-        print("❌ Email error:", e)
-        return False
-
-
-# ================= ROUTES =================
+# ROUTES
 @app.route("/")
 def login():
     return render_template("index.html")
-
 
 @app.route("/signup")
 def signup():
     return render_template("signup.html")
 
-
-@app.route("/otp")
+# ✅ UPDATED OTP ROUTE (GET + POST)
+@app.route("/otp", methods=["GET", "POST"])
 def otp():
-    return render_template("otp.html")
+    if request.method == "POST":
+        user_otp = request.form.get("otp")
 
+        if user_otp == session.get("otp"):
+            return redirect("/home")
+        else:
+            return "❌ Invalid OTP"
+
+    return render_template("otp.html")
 
 @app.route("/home")
 def home():
     return render_template("home.html")
 
+# ✅ NEW ROUTE TO SEND OTP
+@app.route("/send_otp", methods=["POST"])
+def send_otp_route():
+    email = request.form.get("email")
 
-# ================= OTP ROUTE =================
-@app.route("/send-otp", methods=["POST"])
-def send_otp():
-    data = request.get_json() or {}
+    otp = generate_otp()
+    session["otp"] = otp
+    session["email"] = email
 
-    email = data.get("email")
-    otp = data.get("otp")
-
-    if not email or not otp:
-        return jsonify({"status": "error"}), 400
-
-    send_email(email, otp)
-
-    return jsonify({"status": "sent"})
+    if send_otp(email, otp):
+        return redirect("/otp")
+    else:
+        return "❌ Failed to send OTP"
 
 
 # ================= SAFE PARSERS =================
@@ -95,9 +70,11 @@ def parse_time(time_str):
     time_str = str(time_str).strip()
 
     try:
+        # 24-hour format (21:24:18)
         if ":" in time_str and "AM" not in time_str and "PM" not in time_str:
             return int(time_str.split(":")[0])
 
+        # 12-hour format (7:24:18 PM)
         if "AM" in time_str or "PM" in time_str:
             try:
                 return datetime.strptime(time_str, "%I:%M:%S %p").hour
@@ -107,7 +84,7 @@ def parse_time(time_str):
     except:
         pass
 
-    return 12
+    return 12  # fallback
 
 
 def parse_location(location):
@@ -116,10 +93,11 @@ def parse_location(location):
 
     loc = str(location).strip().lower()
 
+    # treat safe
     if loc in ["india", "unknown", ""]:
         return 0
 
-    return 1
+    return 1  # risky
 
 
 def parse_device(device):
@@ -155,12 +133,13 @@ def encode(data):
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.get_json() or {}
+    data = request.json
 
     input_data = encode(data)
 
     pred = model.predict(input_data)[0]
 
+    # DEBUG (optional)
     print("RAW INPUT:", data)
     print("PROCESSED:", input_data.to_dict())
     print("PREDICTION:", pred)
@@ -168,6 +147,6 @@ def predict():
     return jsonify({"prediction": int(pred)})
 
 
-# ================= RUN =================
+# RUN
 if __name__ == "__main__":
     app.run(debug=True)
